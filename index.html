@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conversations with Tyler Semantic Search</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 0 20px;
+            background-color: rgb(25, 25, 25);
+            position: relative;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .background-shapes {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 120vw;
+            height: 120vh;
+            z-index: -1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .background-shapes img {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .search-container {
+            margin-bottom: 30px;
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 800px;
+            padding: 0 20px;
+            box-sizing: border-box;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .search-bar {
+            width: 100%;
+            padding: 15px;
+            font-size: 16px;
+            border: 2px solid #e1e1e1;
+            border-radius: 20px;
+            background-color: #87CEEB;
+            color: black;
+            outline: none;
+            box-sizing: border-box;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .results-count {
+            margin: 20px 0;
+            color: #fff;
+            font-size: 14px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .results-container {
+            position: relative;
+            z-index: 1;
+        }
+
+        .result-card {
+            background-color: #87CEEB;
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .result-image {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background-color: #000;
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+
+        .result-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .result-content {
+            flex-grow: 1;
+        }
+
+        .result-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin: 0 0 5px 0;
+            color: black;
+        }
+
+        .result-title a {
+            color: black;
+            text-decoration: none;
+        }
+
+        .result-title a:hover {
+            text-decoration: underline;
+        }
+
+        .result-speaker {
+            font-size: 16px;
+            margin: 0 0 15px 0;
+            color: black;
+        }
+
+        .result-text {
+            font-size: 14px;
+            line-height: 1.5;
+            color: black;
+            margin: 0;
+        }
+
+        .speaker-label {
+            font-weight: bold;
+            color: black;
+        }
+
+        .how-to-use {
+            color: white;
+            padding: 20px;
+            border-radius: 20px;
+            margin-bottom: 30px;
+            background-color: rgba(135, 206, 235, 0.1);
+        }
+
+        @media (max-width: 768px) {
+            .background-shapes {
+                width: 150vw;
+                height: 150vh;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="background-shapes">
+        <img src="images/circles.png" alt="Circles background">
+        <img src="images/squares.png" alt="Squares background">
+        <img src="images/triangles.png" alt="Triangles background">
+    </div>
+    <h1 style="color: #fff;">Search Conversations with Tyler</h1>
+    
+    <div class="how-to-use" id="howToUse">
+        <h2>How to Use</h2>
+        <p>Enter any topic, concept, or question you're interested in to search through the Conversations with Tyler podcast transcripts. The search uses AI to understand the meaning behind your query and find relevant discussions.</p>
+        <p>Examples:</p>
+        <ul>
+            <li>Search for broad topics: "innovation in cities"</li>
+            <li>Ask specific questions: "what makes a good teacher?"</li>
+            <li>Find discussions about concepts: "comparative advantage"</li>
+        </ul>
+    </div>
+
+    <div class="search-container">
+        <textarea type="text" class="search-bar" placeholder="Type a query & hit enter" id="searchInput" autofocus></textarea>
+    </div>
+
+    <div class="results-count">
+        Results: 0
+    </div>
+
+    <div class="results-container" id="resultsContainer">
+        <!-- Results will be populated here -->
+    </div>
+    
+    <h5 style="color: #fff;">Inspired by <a style="color:gray;" href="https://defenderofbasic.github.io/twitter-semantic-search/">Twitter Semantic Search</a> by <a style="color:gray;" href="https://x.com/DefenderOfBasic/">@DefenderOfBasic</a></h5>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.getElementById('searchInput');
+            const resultsContainer = document.getElementById('resultsContainer');
+            const resultsCount = document.querySelector('.results-count');
+            const howToUse = document.getElementById('howToUse');
+
+            function createResultCard(metadata) {
+                const speakerInfo = metadata.chunk_text.split(':');
+                const speaker = metadata.guest_name;
+                const content = speakerInfo.slice(1).join(':').trim();
+
+                return `
+                    <div class="result-card">
+                        <div class="result-image">
+                            <img src="${metadata.image_link || '/api/placeholder/60/60'}" alt="${speaker}">
+                        </div>
+                        <div class="result-content">
+                            <h2 class="result-title">
+                                <a href="${metadata.link}" target="_blank">${metadata.title}</a>
+                            </h2>
+                            <p class="result-speaker">${speaker}</p>
+                            <p class="result-text">
+                                <span class="speaker-label">${speakerInfo[0]}:</span> ${content}
+                            </p>
+                        </div>
+                    </div>
+                `;
+            }
+
+            async function performSearch(query) {
+                try {
+                    const response = await fetch('https://cowen-semantic-search.woohooyeshaan.workers.dev/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            searchTerm: query
+                        })
+                    });
+
+                    const data = await response.json();
+                    
+                    // Update results count
+                    resultsCount.textContent = `Results: ${data.count || 0}`;
+                    
+                    // Clear previous results
+                    resultsContainer.innerHTML = '';
+                    
+                    // Hide how-to section
+                    howToUse.style.display = 'none';
+                    
+                    // Create and append result cards
+                    if (data.matches && data.matches.length > 0) {
+                        data.matches.forEach(match => {
+                            if (match.metadata) {
+                                resultsContainer.innerHTML += createResultCard(match.metadata);
+                            }
+                        });
+                    }
+                } catch (error) {
+                    console.error('Search error:', error);
+                    resultsContainer.innerHTML = '<p style="color: white;">An error occurred while searching. Please try again.</p>';
+                }
+            }
+
+            // Handle search input
+            searchInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const query = this.value.trim();
+                    if (query) {
+                        performSearch(query);
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>
